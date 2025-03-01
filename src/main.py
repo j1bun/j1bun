@@ -1,10 +1,11 @@
-from litestar import Litestar
 from litestar.openapi.config import OpenAPIConfig
+from litestar import Litestar
 
 from routes import auth, user
 
 
 app = Litestar(
+    path="/api",
     route_handlers=[
         auth.router,
         user.router,
