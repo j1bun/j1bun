@@ -1,5 +1,5 @@
 from typing import Any
-from uuid import uuid4
+# from uuid import uuid4
 
 from litestar import Router, Request, post
 from litestar.connection import ASGIConnection
@@ -16,6 +16,7 @@ from routes.user import schema
 
 
 MOCK_DB: dict[str, schema.User] = {}
+MOCK_USER_ID: str = "b686bb73-3b9c-4c91-83d8-acf3e46e4a8c"
 memory_store = MemoryStore()
 
 
@@ -48,7 +49,7 @@ async def signup(
     data: schema.UserCreatePayload,
     request: Request[Any, Any, Any],
 ) -> schema.User:
-    user = schema.User(name=data.name, email=data.email, id=uuid4())
+    user = schema.User(name=data.name, email=data.email, id=MOCK_USER_ID)
 
     await memory_store.set(data.email, str(user.id))
 
