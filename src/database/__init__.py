@@ -23,8 +23,8 @@ class MongoDB:
 
     def __init__(self):
         self.client = motor.motor_asyncio.AsyncIOMotorClient(
-            host=config.MongoDB.HOST,
-            port=config.MongoDB.PORT,
+            host=config.mongodb.HOST,
+            port=config.mongodb.PORT,
         )
 
     def __getattr__(self, collection: CollectionsEnum):
