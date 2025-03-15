@@ -27,6 +27,8 @@ class MongoDB:
             port=config.MongoDB.PORT,
         )
 
-    def collection(self, collection: CollectionsEnum):
-        """Returns the collection"""
+    def __getattr__(self, collection: CollectionsEnum):
+        """Returns a database collection"""
+        if collection not in CollectionsEnum:
+            raise NameError(f"`{collection}` not in CollectionsEnum")
         return self.client[collection]
