@@ -2,16 +2,16 @@ import enum
 
 import motor.motor_asyncio
 
-from core import config
+from core.config import settings
 
 
 class DatabasesEnum(str, enum.Enum):
-    BACKEND = "j1bun-backend"
+    backend = "j1bun-backend"
 
 
 class CollectionsEnum(str, enum.Enum):
-    CLIENT = "CLIENT"
-    ACCOUNTANT = "ACCOUNTANT"
+    user = "user"
+    accountant = "accountant"
 
 
 class MongoDB:
@@ -28,9 +28,9 @@ class MongoDB:
 
     def __init__(self):
         self.client = motor.motor_asyncio.AsyncIOMotorClient(
-            config.mongodb.get_uri,
+            settings.mdb.get_uri,
         )
-        self.database = self.client[DatabasesEnum.BACKEND]
+        self.database = self.client[DatabasesEnum.backend]
 
     def __getattr__(self, collection: CollectionsEnum):
         """Returns a database collection"""
