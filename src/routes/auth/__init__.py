@@ -1,72 +1,75 @@
+"""JWT -> MongoDB
+
+login:
+    user -> token-sub -> ...
+auth:
+    pass
+
+"""
+
 from typing import Any
-# from uuid import uuid4
 
-from litestar import Router, Request, post
+from litestar import Router, Request, Response, get, post
 from litestar.connection import ASGIConnection
-from litestar.exceptions import NotAuthorizedException
-from litestar.middleware.session.server_side import (
-    ServerSideSessionBackend,
-    ServerSideSessionConfig,
-)
 
-from litestar.security.session_auth import SessionAuth
 from litestar.stores.memory import MemoryStore
+from litestar.security.jwt import JWTAuth, Token
 
+from core.config import settings
 from routes.user import schema
 
 
-MOCK_DB: dict[str, schema.User] = {}
-MOCK_USER_ID: str = "b686bb73-3b9c-4c91-83d8-acf3e46e4a8c"
 memory_store = MemoryStore()
 
 
 async def retrieve_user_handler(
-    session: dict[str, Any],
-    connection: "ASGIConnection[Any, Any, Any, Any]",
+    token: Token, connection: "ASGIConnection[Any, Any, Any, Any]"
 ) -> schema.User | None:
-    if user_id := session.get("user_id"):
-        return MOCK_DB.get(user_id)
+    print("uTOKEN:", token)
+    return await connection.app.state.mdb.CLIENT.find_one(
+        {
+            "model": "User",
+            "token-sub": token.sub,
+        }
+    )
+
+
+jwt_auth = JWTAuth[schema.User](
+    retrieve_user_handler=retrieve_user_handler,
+    token_secret=settings.jwt.SECRET,
+    exclude=["/login", "/schema"],
+)
 
 
 @post("/login")
 async def login(
-    data: schema.UserLoginPayload,
-    request: "Request[Any, Any, Any]",
-) -> schema.User:
-    user_id = await memory_store.get(data.email)
-
-    if not user_id:
-        raise NotAuthorizedException
-    user_id = user_id.decode("utf-8")
-
-    request.set_session({"user_id": user_id})
-
-    return MOCK_DB[user_id]
+    data: schema.User,
+) -> Response[schema.User]:
+    # TODO: check & set user.token-sub -> data.id ???
+    return jwt_auth.login(
+        identifier=str(data.id),
+        token_extras={"email": data.email},
+        response_body=data,
+    )
 
 
-@post("/signup")
-async def signup(
-    data: schema.UserCreatePayload,
-    request: Request[Any, Any, Any],
-) -> schema.User:
-    user = schema.User(name=data.name, email=data.email, id=MOCK_USER_ID)
+@get("/some-path")
+async def some_route_handler(
+    request: "Request[schema.User, Token, Any]",
+) -> Any:
+    print("rUSER:", request.user)
+    print("rAUTH:", request.auth)
+    # request.user is set to the instance of user returned by the middleware
+    assert isinstance(request.user, schema.User)
+    # request.auth is the instance of 'litestar_jwt.Token' created from the data encoded in the auth header
+    assert isinstance(request.auth, Token)
 
-    await memory_store.set(data.email, str(user.id))
-
-    MOCK_DB[str(user.id)] = user
-    request.set_session({"user_id": str(user.id)})
-
-    return user
-
-
-session_auth = SessionAuth[schema.User, ServerSideSessionBackend](
-    retrieve_user_handler=retrieve_user_handler,
-    session_backend_config=ServerSideSessionConfig(),
-    exclude=["/login", "/signup", "/schema"],
-)
 
 router = Router(
     path="/auth",
     tags=["auth"],
-    route_handlers=[login, signup],
+    route_handlers=[
+        login,
+        some_route_handler,
+    ],
 )

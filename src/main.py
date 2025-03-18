@@ -17,7 +17,7 @@ app = Litestar(
         auth.router,
         user.router,
     ],
-    on_app_init=[auth.session_auth.on_app_init],
+    on_app_init=[auth.jwt_auth.on_app_init],
     on_startup=[init_db_connection],
     openapi_config=OpenAPIConfig(
         title="My API",
